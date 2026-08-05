@@ -49,7 +49,7 @@ function mapBackendToDemand(row: any): Demand {
     requester: row.requester,
     impact: row.impact,
     urgency: row.urgency,
-    priority: row.priority,
+    priority: row.priority ,
     status: row.status,
     createdAt: (row.created_at || row.createdAt || new Date().toISOString()).slice(0, 10),
   } as Demand;
