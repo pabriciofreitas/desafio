@@ -12,7 +12,7 @@ interface DemandFormData {
 interface NewDemandFormProps {
   requesters: string[];
   initialData?: DemandFormData;
-  onSubmit: (data: DemandFormData) => void;
+  onSubmit: (data: DemandFormData) => Promise<unknown> | void;
   onCancel?: () => void;
   submitLabel?: string;
 }
@@ -47,7 +47,7 @@ export function NewDemandForm({ requesters, initialData, onSubmit, onCancel, sub
     setError("");
   }, [initialData, requesters]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!title.trim() || !description.trim() || !requester) {
       setError("Preencha todos os campos obrigatórios.");
@@ -58,7 +58,20 @@ export function NewDemandForm({ requesters, initialData, onSubmit, onCancel, sub
       return;
     }
     setError("");
-    onSubmit({ title: title.trim(), description: description.trim(), requester, impact, urgency, status });
+    try {
+      await onSubmit({ title: title.trim(), description: description.trim(), requester, impact, urgency, status });
+      // clear fields after successful create (when not editing)
+      if (!initialData) {
+        setTitle("");
+        setDescription("");
+        setRequester(requesters[0] ?? "");
+        setImpact(3);
+        setUrgency(3);
+        setStatus("Pendente");
+      }
+    } catch (e) {
+      setError("Falha ao salvar demanda.");
+    }
   };
 
   return (
