@@ -1,4 +1,6 @@
+import os
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from asyncpg import Connection
 
 from .api.routes import router as demand_router
@@ -8,6 +10,19 @@ app = FastAPI(
     title="Zeeway Demand API",
     version="0.1.0",
     description="API REST para gerenciamento de demandas de produto.",
+)
+
+# Configure CORS
+origins = [o for o in [os.getenv("FRONTEND_URL")] if o]
+if not origins:
+    origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(demand_router)

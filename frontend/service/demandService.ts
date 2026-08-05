@@ -1,5 +1,5 @@
 import { Demand, DemandStatus } from "../types/demand";
-import { simulateHttp } from "./api";
+import api from "./api";
 
 const initialDemands: Demand[] = [
   {
@@ -44,8 +44,29 @@ function computePriority(impact: number, urgency: number): Demand["priority"] {
   return "Baixa";
 }
 
+function priorityLabelFromNumber(n: number) {
+  if (n >= 8) return "Alta";
+  if (n >= 5) return "Média";
+  return "Baixa";
+}
+
+function mapBackendToDemand(row: any): Demand {
+  return {
+    id: String(row.id),
+    title: row.title,
+    description: row.description,
+    requester: row.requester,
+    impact: row.impact,
+    urgency: row.urgency,
+    priority: typeof row.priority === "number" ? priorityLabelFromNumber(row.priority) : String(row.priority),
+    status: row.status,
+    createdAt: (row.created_at || row.createdAt || new Date().toISOString()).slice(0, 10),
+  } as Demand;
+}
+
 export async function listDemands(): Promise<Demand[]> {
-  return simulateHttp(initialDemands.map((item) => ({ ...item })));
+  const rows = await api.get<any[]>("/demands/");
+  return rows.map(mapBackendToDemand);
 }
 
 export async function createDemand(data: {
@@ -55,19 +76,14 @@ export async function createDemand(data: {
   impact: number;
   urgency: number;
 }): Promise<Demand> {
-  const newDemand: Demand = {
-    id: String(Date.now()),
+  const row = await api.post<any>("/demands/", {
     title: data.title,
     description: data.description,
-    requester: data.requester as "Pabricio" | "Vitor",
+    requester: data.requester,
     impact: data.impact,
     urgency: data.urgency,
-    priority: computePriority(data.impact, data.urgency),
-    status: "Pendente",
-    createdAt: new Date().toISOString().slice(0, 10),
-  };
-
-  return simulateHttp(newDemand);
+  });
+  return mapBackendToDemand(row);
 }
 
 export async function updateDemand(
@@ -82,25 +98,23 @@ export async function updateDemand(
     createdAt: string;
   }
 ): Promise<Demand> {
-  const updatedDemand: Demand = {
-    id,
+  const row = await api.put<any>(`/demands/${id}`, {
     title: data.title,
     description: data.description,
-    requester: data.requester as "Pabricio" | "Vitor",
+    requester: data.requester,
     impact: data.impact,
     urgency: data.urgency,
     status: data.status,
-    priority: computePriority(data.impact, data.urgency),
-    createdAt: data.createdAt,
-  };
-
-  return simulateHttp(updatedDemand);
+  });
+  return mapBackendToDemand(row);
 }
 
 export async function updateDemandStatus(id: string, status: DemandStatus): Promise<{ id: string; status: DemandStatus }> {
-  return simulateHttp({ id, status });
+  const row = await api.patch<any>(`/demands/${id}/status`, { status });
+  return { id: String(row.id), status: row.status };
 }
 
 export async function deleteDemand(id: string): Promise<{ id: string }> {
-  return simulateHttp({ id });
+  await api.del(`/demands/${id}`);
+  return { id };
 }
