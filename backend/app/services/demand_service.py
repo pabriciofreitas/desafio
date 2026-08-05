@@ -55,7 +55,17 @@ async def update_demand(connection: Connection, demand_id: UUID, demand_update: 
     if not demand:
         raise NotFoundError("Demanda não encontrada")
 
-    return await repo_update_demand(connection, demand_id, demand_update.model_dump())
+    data = demand_update.model_dump()
+    merged = {
+        "title": data.get("title", demand["title"]),
+        "description": data.get("description", demand["description"]),
+        "requester": data.get("requester", demand["requester"]),
+        "impact": data.get("impact", demand["impact"]),
+        "urgency": data.get("urgency", demand["urgency"]),
+        "status": data.get("status", demand["status"]),
+    }
+
+    return await repo_update_demand(connection, demand_id, merged)
 
 
 async def change_status(connection: Connection, demand_id: UUID, status_data: DemandStatusUpdate):
