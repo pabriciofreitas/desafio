@@ -16,14 +16,14 @@ for path in dotenv_paths:
 
 class Settings:
     def __init__(self) -> None:
-        self.DB_HOST = os.getenv("DB_HOST", "localhost")
-        self.DB_PORT = int(os.getenv("DB_PORT", "5432"))
-        self.DB_NAME = os.getenv("DB_NAME", "motoca_backoffice_db")
-        self.DB_USER = os.getenv("DB_USER", "postgres")
-        self.DB_PASSWORD = os.getenv("DB_PASSWORD", "admin")
+        self.DB_HOST = os.getenv("DB_HOST")
+        self.DB_PORT = int(os.getenv("DB_PORT"))
+        self.DB_NAME = os.getenv("DB_NAME")
+        self.DB_USER = os.getenv("DB_USER")
+        self.DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-        self.APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
-        self.APP_PORT = int(os.getenv("APP_PORT", "8000"))
+        self.APP_HOST = os.getenv("APP_HOST")
+        self.APP_PORT = int(os.getenv("APP_PORT"))
         self.DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
 
 
