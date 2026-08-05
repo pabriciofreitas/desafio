@@ -7,7 +7,7 @@ export interface Demand {
   requester: "Pabricio" | "Vitor";
   impact: number;
   urgency: number;
-  priority: "Alta" | "Média" | "Baixa";
+  priority: number;
   status: DemandStatus;
   createdAt: string;
 }

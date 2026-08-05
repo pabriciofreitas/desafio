@@ -9,7 +9,7 @@ const initialDemands: Demand[] = [
     requester: "Pabricio",
     impact: 4,
     urgency: 5,
-    priority: "Alta",
+    priority: 9,
     status: "Pendente",
     createdAt: "2026-08-01",
   },
@@ -20,7 +20,7 @@ const initialDemands: Demand[] = [
     requester: "Vitor",
     impact: 3,
     urgency: 3,
-    priority: "Média",
+    priority: 6,
     status: "Em andamento",
     createdAt: "2026-08-02",
   },
@@ -31,23 +31,14 @@ const initialDemands: Demand[] = [
     requester: "Pabricio",
     impact: 2,
     urgency: 4,
-    priority: "Média",
+    priority: 6,
     status: "Concluída",
     createdAt: "2026-08-03",
   },
 ];
 
-function computePriority(impact: number, urgency: number): Demand["priority"] {
-  const score = impact + urgency;
-  if (score >= 8) return "Alta";
-  if (score >= 5) return "Média";
-  return "Baixa";
-}
-
-function priorityLabelFromNumber(n: number) {
-  if (n >= 8) return "Alta";
-  if (n >= 5) return "Média";
-  return "Baixa";
+function computePriority(impact: number, urgency: number): number {
+  return impact * 2 + urgency;
 }
 
 function mapBackendToDemand(row: any): Demand {
@@ -58,7 +49,7 @@ function mapBackendToDemand(row: any): Demand {
     requester: row.requester,
     impact: row.impact,
     urgency: row.urgency,
-    priority: typeof row.priority === "number" ? priorityLabelFromNumber(row.priority) : String(row.priority),
+    priority: row.priority,
     status: row.status,
     createdAt: (row.created_at || row.createdAt || new Date().toISOString()).slice(0, 10),
   } as Demand;

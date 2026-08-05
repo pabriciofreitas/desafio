@@ -12,15 +12,14 @@ import { createDemand, deleteDemand, listDemands, updateDemand, updateDemandStat
 const requesters: string[] = ["Pabricio", "Vitor"];
 const statuses: DemandStatus[] = ["Pendente", "Em andamento", "Concluída", "Cancelada"];
 
-function computePriority(impact: number, urgency: number): Demand["priority"] {
-  const score = impact + urgency;
-  if (score >= 8) return "Alta";
-  if (score >= 5) return "Média";
-  return "Baixa";
+function computePriority(impact: number, urgency: number): number {
+  return impact * 2 + urgency;
 }
 
-function priorityWeight(priority: Demand["priority"]) {
-  return priority === "Alta" ? 3 : priority === "Média" ? 2 : 1;
+function priorityWeight(priority: number) {
+  if (priority >= 8) return 3;
+  if (priority >= 5) return 2;
+  return 1;
 }
 
 export default function Home() {
