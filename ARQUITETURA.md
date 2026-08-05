@@ -1,120 +1,127 @@
-﻿# Arquitetura
+# Respostas
 
-## 1. Recurso finito com demanda maior que oferta
+## 1. Você tem um recurso finito - por exemplo, 100 conexões, 100 tokens ou 100 slots - e existe constantemente mais demanda do que oferta. Como você começa a pensar a solução?
 
-Quando há mais demanda do que oferta de um recurso finito — por exemplo, 100 conexões, 100 tokens ou 100 slots — a primeira etapa é entender se o problema está na falta de recurso ou em um gargalo de performance.
+Primeiro, eu analisaria o comportamento do sistema para entender se o problema está relacionado à falta de recursos ou a algum gargalo de performance.
 
-Eu verificaria métricas como:
+Eu verificaria métricas como tempo de resposta, consumo de CPU, memória, quantidade de requisições, tempo médio de utilização dos recursos e comportamento dos usuários.
 
-- tempo de resposta
-- consumo de CPU
-- consumo de memória
-- quantidade de requisições
-- tempo médio de utilização dos recursos
-- comportamento dos usuários
+Caso exista algum processamento pesado ou uso ineficiente dos recursos, buscaria otimizações antes de simplesmente aumentar a infraestrutura.
 
-Se houver processamento pesado ou uso ineficiente dos recursos, otimizações são preferíveis antes de escalar a infraestrutura.
+Se a demanda for realmente superior à capacidade disponível, avaliaria estratégias como:
 
-Se a demanda realmente exceder a capacidade, avaliaria estratégias como:
+- implementação de filas de espera;
+- controle de limite por usuário (rate limit ou quotas);
+- priorização de solicitações;
+- escalabilidade horizontal ou vertical;
+- aumento da capacidade do pool de recursos.
 
-- implementação de filas de espera
-- controle de limite por usuário (rate limit ou quotas)
-- priorização de solicitações
-- escalabilidade horizontal ou vertical
-- aumento da capacidade do pool de recursos
+O objetivo é garantir que os recursos sejam utilizados de forma eficiente, evitando indisponibilidade e mantendo previsibilidade no comportamento do sistema.
 
-O objetivo é usar os recursos de forma eficiente, evitando indisponibilidade e mantendo previsibilidade.
+---
 
-## 2. Dois clientes pedem o último slot ao mesmo tempo
+## 2. Dois clientes pedem o último slot disponível ao mesmo tempo. Como você garante que apenas um deles recebe o recurso?
 
-Esse é um problema de concorrência: duas requisições podem tentar reservar o mesmo recurso simultaneamente.
+Esse é um problema de concorrência, onde duas requisições podem tentar acessar o mesmo recurso simultaneamente.
 
-Para garantir que apenas um cliente receba o recurso, a verificação e a reserva devem ser atômicas.
+Para evitar que o mesmo recurso seja entregue para dois clientes diferentes, eu garantiria que a operação de verificação e reserva seja atômica.
 
-Abordagens possíveis:
+Algumas abordagens possíveis:
 
-- usar transações com controle de concorrência no banco de dados
-- usar locks distribuídos
-- usar mecanismos atômicos como Redis
-- garantir que a atualização do estado ocorra em uma única operação
+- utilizar transações com controle de concorrência no banco de dados;
+- utilizar locks distribuídos;
+- utilizar mecanismos atômicos de ferramentas como Redis;
+- garantir que a atualização do estado do recurso aconteça em uma única operação.
 
-Em vez de:
+Por exemplo, em vez de fazer:
 
-1. verificar se há recurso disponível
-2. reservar o recurso
+- verificar se existe recurso disponível;
+- depois reservar;
 
-faço uma operação única que verifica e reserva ao mesmo tempo, evitando race conditions.
+eu faria uma operação única que verifica e já realiza a reserva, evitando condições de corrida (*race conditions*).
 
-## 3. Recurso devolvido ou expira sozinho
+---
 
-Esse cenário muda a arquitetura, pois o recurso passa a ter um ciclo de vida que precisa ser gerenciado.
+## 3. O recurso pode ser devolvido pelo cliente ou expirar sozinho depois de determinado período. Isso muda sua arquitetura? Explique.
 
-Além do controle de disponibilidade, deve-se armazenar:
+Sim, porque agora existe um ciclo de vida do recurso que precisa ser gerenciado.
 
-- quem está utilizando o recurso
-- quando ele foi adquirido
-- tempo máximo de utilização
-- status atual do recurso
-- momento da liberação
+Além do controle de disponibilidade, seria necessário armazenar informações como:
 
-Mecanismos necessários:
+- quem está utilizando o recurso;
+- quando ele foi adquirido;
+- tempo máximo de utilização;
+- status atual do recurso;
+- momento da liberação.
 
-- liberar recursos manualmente quando o cliente terminar o uso
-- expirar automaticamente recursos abandonados
-- executar processos periódicos para identificar recursos vencidos
+Eu implementaria mecanismos para:
 
-Também é importante lidar com falhas, como cliente desconectando sem liberar o recurso. Nesse caso, a expiração automática devolve o recurso ao pool.
+- liberar recursos manualmente quando o cliente finalizar o uso;
+- expirar automaticamente recursos abandonados;
+- executar processos periódicos para identificar recursos vencidos.
 
-## 4. Serviço de controle do pool cai durante a operação
+Também consideraria cenários de falha, por exemplo, quando o cliente desconecta sem liberar o recurso. Nesse caso, a expiração automática garante que o recurso volte para o pool.
 
-Se o controle do pool estiver apenas na memória da aplicação, uma falha pode fazer o sistema perder o estado dos recursos.
+---
 
-Para evitar isso, o gerenciamento do pool deve ser desacoplado da aplicação e mantido em uma camada centralizada, como Redis ou banco de dados.
+## 4. Se o serviço que controla o pool cair no meio da operação, o que acontece com os recursos que já foram emprestados?
 
-Assim, mesmo que uma instância falhe, o estado dos recursos permanece disponível.
+Depende da arquitetura utilizada.
 
-Também aplicaria:
+Se o controle do pool estiver apenas dentro da memória da aplicação, uma falha pode causar perda do estado dos recursos, fazendo o sistema não saber quais recursos estavam em uso.
 
-- expiração automática dos recursos
-- recuperação após falha
-- monitoramento de saúde do serviço
-- logs e auditoria das reservas
+Para evitar esse problema, eu manteria o gerenciamento do pool desacoplado da aplicação, utilizando uma camada centralizada de controle, como Redis ou banco de dados.
+
+Assim, mesmo que uma instância da aplicação falhe, o estado dos recursos permanece armazenado.
+
+Além disso, aplicaria mecanismos como:
+
+- expiração automática dos recursos;
+- recuperação após falha;
+- monitoramento de saúde do serviço;
+- logs e auditoria das reservas.
 
 O objetivo é garantir consistência e evitar que recursos fiquem presos indefinidamente.
 
-## 5. Segunda instância atrás de load balancer
+---
 
-O controle de recursos não pode ficar na memória local de cada instância.
+## 5. Se uma segunda instância da aplicação for adicionada atrás de um load balancer, como garantir que o limite global de 100 recursos continue sendo respeitado?
 
-Se cada instância mantiver seu próprio contador, teríamos:
+O controle dos recursos não pode ficar dentro da memória local de cada instância da aplicação.
 
-- Instância A acredita ter 100 recursos
-- Instância B acredita ter 100 recursos
+Se cada instância tivesse seu próprio contador, poderíamos ter um cenário como:
 
-resultando em limite global ultrapassado.
+- Instância A acredita que possui 100 recursos;
+- Instância B acredita que possui 100 recursos;
 
-A solução é um controle centralizado de estado, como:
+resultando em um limite global ultrapassado.
 
-- Redis
-- banco de dados relacional com transações
-- serviço dedicado de gerenciamento de recursos
+Para resolver isso, utilizaria um controle centralizado de estado, como:
 
-Todas as instâncias consultam e atualizam a mesma fonte de verdade, respeitando o limite global.
+- Redis;
+- banco de dados relacional com transações;
+- serviço dedicado de gerenciamento de recursos.
 
-## 6. Recurso indisponível, mas prestes a ser devolvido
+Todas as instâncias consultariam e atualizariam a mesma fonte de verdade.
 
-A decisão entre erro imediato ou espera depende da regra de negócio e da experiência do usuário.
+Dessa forma, mesmo com várias instâncias atrás de um load balancer, o limite global de 100 recursos continua sendo respeitado.
 
-Algumas aplicações retornam erro imediato; outras colocam a solicitação em fila de espera.
+---
 
-Fatores que influenciam essa decisão:
+## 6. Não há recurso disponível agora, mas um está prestes a ser devolvido. O cliente recebe erro imediato ou espera? Quais fatores influenciam essa decisão?
 
-- tempo máximo aceitável de espera pelo cliente
-- tempo médio de utilização do recurso
-- criticidade da operação
-- quantidade de usuários simultâneos
-- capacidade de processamento do sistema
+Depende da regra de negócio e da experiência esperada pelo usuário.
 
-Uma abordagem comum é usar uma fila com timeout. Se o recurso for liberado dentro do prazo, a solicitação é atendida; caso contrário, retorna indisponibilidade.
+Algumas aplicações podem retornar erro imediatamente, enquanto outras podem colocar a solicitação em uma fila de espera.
 
-Em cenários previsíveis, a escalabilidade automática também pode ajudar a aumentar a capacidade.
+Os principais fatores que influenciam essa decisão são:
+
+- tempo máximo aceitável de espera pelo cliente;
+- tempo médio de utilização dos recursos;
+- criticidade da operação;
+- quantidade esperada de usuários simultâneos;
+- capacidade de processamento do sistema.
+
+Uma abordagem comum é utilizar uma fila com timeout configurável. Caso o recurso seja liberado dentro desse período, a solicitação é atendida; caso contrário, o sistema retorna uma resposta informando indisponibilidade.
+
+Em cenários de alta demanda previsível, também pode ser utilizada escalabilidade automática para aumentar a capacidade conforme a necessidade.
