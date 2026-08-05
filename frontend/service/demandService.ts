@@ -1,46 +1,6 @@
 import { Demand, DemandStatus } from "../types/demand";
 import api from "./api";
 
-const initialDemands: Demand[] = [
-  {
-    id: "1",
-    title: "Ajustar fluxo de aprovação",
-    description: "Revisar a jornada de cadastro para reduzir fricção do usuário.",
-    requester: "Pabricio",
-    impact: 4,
-    urgency: 5,
-    priority: 9,
-    status: "Pendente",
-    createdAt: "2026-08-01",
-  },
-  {
-    id: "2",
-    title: "Melhorar relatório diário",
-    description: "Incluir coluna de prioridade e filtro por solicitante.",
-    requester: "Vitor",
-    impact: 3,
-    urgency: 3,
-    priority: 6,
-    status: "Em andamento",
-    createdAt: "2026-08-02",
-  },
-  {
-    id: "3",
-    title: "Corrigir alerta de e-mail",
-    description: "Notificações estão sendo disparadas com dados incorretos.",
-    requester: "Pabricio",
-    impact: 2,
-    urgency: 4,
-    priority: 6,
-    status: "Concluída",
-    createdAt: "2026-08-03",
-  },
-];
-
-function computePriority(impact: number, urgency: number): number {
-  return impact * 2 + urgency;
-}
-
 function mapBackendToDemand(row: any): Demand {
   return {
     id: String(row.id),
