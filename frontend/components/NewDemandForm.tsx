@@ -1,17 +1,47 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+
+interface DemandFormData {
+  title: string;
+  description: string;
+  requester: string;
+  impact: number;
+  urgency: number;
+}
 
 interface NewDemandFormProps {
   requesters: string[];
-  onCreate: (data: { title: string; description: string; requester: string; impact: number; urgency: number }) => void;
+  initialData?: DemandFormData;
+  onSubmit: (data: DemandFormData) => void;
+  onCancel?: () => void;
+  submitLabel?: string;
 }
 
-export function NewDemandForm({ requesters, onCreate }: NewDemandFormProps) {
+export function NewDemandForm({ requesters, initialData, onSubmit, onCancel, submitLabel = "Adicionar" }: NewDemandFormProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [requester, setRequester] = useState(requesters[0] ?? "");
   const [impact, setImpact] = useState(3);
   const [urgency, setUrgency] = useState(3);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (initialData) {
+      setTitle(initialData.title);
+      setDescription(initialData.description);
+      setRequester(initialData.requester);
+      setImpact(initialData.impact);
+      setUrgency(initialData.urgency);
+      setError("");
+      return;
+    }
+
+    setTitle("");
+    setDescription("");
+    setRequester(requesters[0] ?? "");
+    setImpact(3);
+    setUrgency(3);
+    setError("");
+  }, [initialData, requesters]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -24,26 +54,35 @@ export function NewDemandForm({ requesters, onCreate }: NewDemandFormProps) {
       return;
     }
     setError("");
-    onCreate({ title: title.trim(), description: description.trim(), requester, impact, urgency });
-    setTitle("");
-    setDescription("");
-    setImpact(3);
-    setUrgency(3);
+    onSubmit({ title: title.trim(), description: description.trim(), requester, impact, urgency });
   };
 
   return (
     <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Nova demanda</h2>
-          <p className="mt-1 text-sm text-slate-600">Cadastre uma demanda rápida e veja a lista atualizar.</p>
+          <h2 className="text-lg font-semibold text-slate-900">{initialData ? "Editar demanda" : "Nova demanda"}</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            {initialData ? "Atualize os dados e salve a demanda existente." : "Cadastre uma demanda rápida e veja a lista atualizar."}
+          </p>
         </div>
-        <button
-          type="submit"
-          className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
-        >
-          Adicionar
-        </button>
+        <div className="flex items-center gap-3">
+          {onCancel ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+            >
+              Cancelar
+            </button>
+          ) : null}
+          <button
+            type="submit"
+            className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+          >
+            {submitLabel}
+          </button>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">

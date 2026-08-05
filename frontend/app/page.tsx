@@ -7,45 +7,10 @@ import { EmptyState } from "../components/EmptyState";
 import { Filters } from "../components/Filters";
 import { NewDemandForm } from "../components/NewDemandForm";
 import { SummaryCards } from "../components/SummaryCards";
+import { createDemand, deleteDemand, listDemands, updateDemand, updateDemandStatus } from "../service/demandService";
 
-const requesters = ["Pabricio", "Vitor"] as string[];
+const requesters: string[] = ["Pabricio", "Vitor"];
 const statuses: DemandStatus[] = ["Pendente", "Em andamento", "Concluída", "Cancelada"];
-
-const initialDemands: Demand[] = [
-  {
-    id: "1",
-    title: "Ajustar fluxo de aprovação",
-    description: "Revisar a jornada de cadastro para reduzir fricção do usuário.",
-    requester: "Pabricio",
-    impact: 4,
-    urgency: 5,
-    priority: "Alta",
-    status: "Pendente",
-    createdAt: "2026-08-01",
-  },
-  {
-    id: "2",
-    title: "Melhorar relatório diário",
-    description: "Incluir coluna de prioridade e filtro por solicitante.",
-    requester: "Vitor",
-    impact: 3,
-    urgency: 3,
-    priority: "Média",
-    status: "Em andamento",
-    createdAt: "2026-08-02",
-  },
-  {
-    id: "3",
-    title: "Corrigir alerta de e-mail",
-    description: "Notificações estão sendo disparadas com dados incorretos.",
-    requester: "Pabricio",
-    impact: 2,
-    urgency: 4,
-    priority: "Média",
-    status: "Concluída",
-    createdAt: "2026-08-03",
-  },
-];
 
 function computePriority(impact: number, urgency: number): Demand["priority"] {
   const score = impact + urgency;
@@ -66,14 +31,23 @@ export default function Home() {
   const [statusFilter, setStatusFilter] = useState("");
   const [requesterFilter, setRequesterFilter] = useState("");
   const [impactFilter, setImpactFilter] = useState("");
+  const [editingDemand, setEditingDemand] = useState<Demand | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    const timer = window.setTimeout(() => {
-      setDemands(initialDemands);
-      setLoading(false);
-    }, 700);
-    return () => window.clearTimeout(timer);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const apiDemands = await listDemands();
+        setDemands(apiDemands);
+        setError("");
+      } catch {
+        setError("Falha ao carregar demandas.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const visibleDemands = useMemo(() => {
@@ -88,24 +62,78 @@ export default function Home() {
       });
   }, [demands, statusFilter, requesterFilter, impactFilter]);
 
-  const handleStatusChange = (id: string, status: DemandStatus) => {
-    setDemands((current) => current.map((item) => (item.id === id ? { ...item, status } : item)));
+  const handleStatusChange = async (id: string, status: DemandStatus) => {
+    setLoading(true);
+    try {
+      await updateDemandStatus(id, status);
+      setDemands((current) => current.map((item) => (item.id === id ? { ...item, status } : item)));
+      setError("");
+    } catch {
+      setError("Falha ao atualizar status.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCreateDemand = (data: { title: string; description: string; requester: string; impact: number; urgency: number }) => {
-    const newDemand: Demand = {
-      id: String(Date.now()),
-      title: data.title,
-      description: data.description,
-      requester: data.requester as "Pabricio" | "Vitor",
-      impact: data.impact,
-      urgency: data.urgency,
-      priority: computePriority(data.impact, data.urgency),
-      status: "Pendente",
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
-    setDemands((current) => [newDemand, ...current]);
+  const handleCreateDemand = async (data: { title: string; description: string; requester: string; impact: number; urgency: number }) => {
+    setLoading(true);
+    try {
+      const newItem = await createDemand(data);
+      setDemands((current) => [newItem, ...current]);
+      setEditingDemand(null);
+      setTab("demands");
+      setError("");
+    } catch {
+      setError("Falha ao criar demanda.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateDemand = async (data: { title: string; description: string; requester: string; impact: number; urgency: number }) => {
+    if (!editingDemand) return;
+
+    setLoading(true);
+    try {
+      const updated = await updateDemand(editingDemand.id, {
+        ...data,
+        status: editingDemand.status,
+        createdAt: editingDemand.createdAt,
+      });
+      setDemands((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setEditingDemand(null);
+      setTab("demands");
+      setError("");
+    } catch {
+      setError("Falha ao atualizar demanda.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteDemand = async (id: string) => {
+    setLoading(true);
+    try {
+      await deleteDemand(id);
+      setDemands((current) => current.filter((item) => item.id !== id));
+      if (editingDemand?.id === id) {
+        setEditingDemand(null);
+      }
+      setError("");
+    } catch {
+      setError("Falha ao excluir demanda.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditDemand = (demand: Demand) => {
+    setEditingDemand(demand);
     setTab("demands");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingDemand(null);
   };
 
   return (
@@ -169,7 +197,7 @@ export default function Home() {
                     status={statusFilter}
                     requester={requesterFilter}
                     impact={impactFilter}
-                    requesters={requesters as string[]}
+                    requesters={requesters}
                     statuses={statuses}
                     onChange={(field, value) => {
                       if (field === "status") setStatusFilter(value);
@@ -191,10 +219,28 @@ export default function Home() {
               ) : visibleDemands.length === 0 ? (
                 <EmptyState title="Nenhuma demanda encontrada" description="Ajuste os filtros ou crie uma nova demanda." />
               ) : (
-                <DemandList demands={visibleDemands} statuses={statuses} onStatusChange={handleStatusChange} />
+                <DemandList
+                  demands={visibleDemands}
+                  statuses={statuses}
+                  onStatusChange={handleStatusChange}
+                  onEdit={handleEditDemand}
+                  onDelete={handleDeleteDemand}
+                />
               )}
             </div>
-            <NewDemandForm requesters={requesters as string[]} onCreate={handleCreateDemand} />
+            <NewDemandForm
+              requesters={requesters}
+              initialData={editingDemand ? {
+                title: editingDemand.title,
+                description: editingDemand.description,
+                requester: editingDemand.requester,
+                impact: editingDemand.impact,
+                urgency: editingDemand.urgency,
+              } : undefined}
+              onSubmit={editingDemand ? handleUpdateDemand : handleCreateDemand}
+              onCancel={editingDemand ? handleCancelEdit : undefined}
+              submitLabel={editingDemand ? "Salvar alterações" : "Adicionar"}
+            />
           </div>
         )}
       </div>
