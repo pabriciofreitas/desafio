@@ -23,9 +23,10 @@ async def init_db_pool() -> None:
     )
     async with pool.acquire() as conn:
         await conn.execute(
-            """
+           """
+            CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
             CREATE TABLE IF NOT EXISTS demands (
-                id UUID PRIMARY KEY,
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 title VARCHAR(255) NOT NULL,
                 description TEXT NOT NULL,
                 requester VARCHAR(150) NOT NULL,
@@ -35,6 +36,27 @@ async def init_db_pool() -> None:
                 created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
             );
+
+            CREATE OR REPLACE FUNCTION update_updated_at_column()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                NEW.updated_at = NOW();
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_trigger WHERE tgname = 'trg_update_demands'
+                ) THEN
+                    CREATE TRIGGER trg_update_demands
+                    BEFORE UPDATE ON demands
+                    FOR EACH ROW
+                    EXECUTE FUNCTION update_updated_at_column();
+                END IF;
+            END;
+            $$;
             """
         )
 
