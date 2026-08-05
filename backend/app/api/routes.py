@@ -1,9 +1,9 @@
 from uuid import UUID
 
+from asyncpg import Connection
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..core.database import get_async_session
+from ..core.database import get_db
 from ..schemas.demand import (
     DemandCreate,
     DemandRead,
@@ -30,32 +30,32 @@ async def list_demands(
     status: str | None = None,
     requester: str | None = None,
     impact: int | None = None,
-    session: AsyncSession = Depends(get_async_session),
+    connection: Connection = Depends(get_db),
 ):
-    return await get_demands(session, status=status, requester=requester, impact=impact)
+    return await get_demands(connection, status=status, requester=requester, impact=impact)
 
 
 @router.get("/{demand_id}", response_model=DemandRead)
-async def retrieve_demand(demand_id: UUID, session: AsyncSession = Depends(get_async_session)):
+async def retrieve_demand(demand_id: UUID, connection: Connection = Depends(get_db)):
     try:
-        return await get_demand(session, demand_id)
+        return await get_demand(connection, demand_id)
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
 
 
 @router.post("/", response_model=DemandRead, status_code=status.HTTP_201_CREATED)
-async def create_new_demand(demand_create: DemandCreate, session: AsyncSession = Depends(get_async_session)):
-    return await create_demand(session, demand_create)
+async def create_new_demand(demand_create: DemandCreate, connection: Connection = Depends(get_db)):
+    return await create_demand(connection, demand_create)
 
 
 @router.put("/{demand_id}", response_model=DemandRead)
 async def update_existing_demand(
     demand_id: UUID,
     demand_update: DemandUpdate,
-    session: AsyncSession = Depends(get_async_session),
+    connection: Connection = Depends(get_db),
 ):
     try:
-        return await update_demand(session, demand_id, demand_update)
+        return await update_demand(connection, demand_id, demand_update)
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
 
@@ -64,22 +64,22 @@ async def update_existing_demand(
 async def patch_demand_status(
     demand_id: UUID,
     status_update: DemandStatusUpdate,
-    session: AsyncSession = Depends(get_async_session),
+    connection: Connection = Depends(get_db),
 ):
     try:
-        return await change_status(session, demand_id, status_update)
+        return await change_status(connection, demand_id, status_update)
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
 
 
 @router.delete("/{demand_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def remove_demand(demand_id: UUID, session: AsyncSession = Depends(get_async_session)):
+async def remove_demand(demand_id: UUID, connection: Connection = Depends(get_db)):
     try:
-        await delete_demand(session, demand_id)
+        await delete_demand(connection, demand_id)
     except NotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
 
 
 @router.get("/summary", response_model=DemandSummary)
-async def demands_summary(session: AsyncSession = Depends(get_async_session)):
-    return await get_summary(session)
+async def demands_summary(connection: Connection = Depends(get_db)):
+    return await get_summary(connection)

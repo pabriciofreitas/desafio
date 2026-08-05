@@ -1,81 +1,183 @@
-from typing import Iterable
-from uuid import UUID
+from uuid import uuid4, UUID
 
-from sqlalchemy import delete, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from ..models.demand import Demand
+from asyncpg import Connection
 
 
 async def list_demands(
-    session: AsyncSession,
+    connection: Connection,
     status: str | None = None,
     requester: str | None = None,
     impact: int | None = None,
-) -> list[Demand]:
-    statement = select(Demand)
+) -> list[dict]:
+    query = [
+        "SELECT",
+        "  id,",
+        "  title,",
+        "  description,",
+        "  requester,",
+        "  impact,",
+        "  urgency,",
+        "  status,",
+        "  created_at,",
+        "  updated_at,",
+        "  impact * 2 + urgency AS priority",
+        "FROM demands",
+    ]
+    args: list = []
+    conditions: list[str] = []
 
     if status:
-        statement = statement.where(Demand.status == status)
+        conditions.append(f"status = ${len(args) + 1}")
+        args.append(status)
     if requester:
-        statement = statement.where(Demand.requester == requester)
+        conditions.append(f"requester = ${len(args) + 1}")
+        args.append(requester)
     if impact is not None:
-        statement = statement.where(Demand.impact == impact)
+        conditions.append(f"impact = ${len(args) + 1}")
+        args.append(impact)
 
-    statement = statement.order_by(Demand.priority.desc(), Demand.created_at.desc())
-    result = await session.execute(statement)
-    return result.scalars().all()
+    if conditions:
+        query.append("WHERE " + " AND ".join(conditions))
 
-
-async def get_demand(session: AsyncSession, demand_id: UUID) -> Demand | None:
-    result = await session.execute(select(Demand).where(Demand.id == demand_id))
-    return result.scalars().first()
-
-
-async def create_demand(session: AsyncSession, demand_data: dict) -> Demand:
-    demand = Demand(**demand_data)
-    session.add(demand)
-    await session.commit()
-    await session.refresh(demand)
-    return demand
+    query.append("ORDER BY priority DESC, created_at DESC")
+    sql = "\n".join(query)
+    rows = await connection.fetch(sql, *args)
+    return [dict(row) for row in rows]
 
 
-async def update_demand(session: AsyncSession, demand: Demand, data: dict) -> Demand:
-    for key, value in data.items():
-        setattr(demand, key, value)
-
-    await session.commit()
-    await session.refresh(demand)
-    return demand
-
-
-async def update_demand_status(session: AsyncSession, demand: Demand, status: str) -> Demand:
-    demand.status = status
-    await session.commit()
-    await session.refresh(demand)
-    return demand
-
-
-async def delete_demand(session: AsyncSession, demand: Demand) -> None:
-    await session.delete(demand)
-    await session.commit()
-
-
-async def get_summary(session: AsyncSession) -> dict[str, int]:
-    statement = select(
-        func.count().label("total"),
-        func.count().filter(Demand.status == "Pendente").label("pending"),
-        func.count().filter(Demand.status == "Em andamento").label("in_progress"),
-        func.count().filter(Demand.status == "Concluída").label("completed"),
-        func.count().filter(Demand.status == "Cancelada").label("cancelled"),
+async def get_demand(connection: Connection, demand_id: UUID) -> dict | None:
+    row = await connection.fetchrow(
+        """
+        SELECT
+          id,
+          title,
+          description,
+          requester,
+          impact,
+          urgency,
+          status,
+          created_at,
+          updated_at,
+          impact * 2 + urgency AS priority
+        FROM demands
+        WHERE id = $1
+        """,
+        demand_id,
     )
+    return dict(row) if row else None
 
-    result = await session.execute(statement)
-    row = result.one()
-    return {
-        "total": int(row.total),
-        "pending": int(row.pending),
-        "in_progress": int(row.in_progress),
-        "completed": int(row.completed),
-        "cancelled": int(row.cancelled),
-    }
+
+async def create_demand(connection: Connection, demand_data: dict) -> dict:
+    row = await connection.fetchrow(
+        """
+        INSERT INTO demands (
+          id,
+          title,
+          description,
+          requester,
+          impact,
+          urgency,
+          status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING
+          id,
+          title,
+          description,
+          requester,
+          impact,
+          urgency,
+          status,
+          created_at,
+          updated_at,
+          impact * 2 + urgency AS priority
+        """,
+        uuid4(),
+        demand_data["title"],
+        demand_data["description"],
+        demand_data["requester"],
+        demand_data["impact"],
+        demand_data["urgency"],
+        demand_data.get("status", "Pendente"),
+    )
+    return dict(row)
+
+
+async def update_demand(connection: Connection, demand_id: UUID, data: dict) -> dict | None:
+    row = await connection.fetchrow(
+        """
+        UPDATE demands
+        SET
+          title = $1,
+          description = $2,
+          requester = $3,
+          impact = $4,
+          urgency = $5,
+          status = $6,
+          updated_at = now()
+        WHERE id = $7
+        RETURNING
+          id,
+          title,
+          description,
+          requester,
+          impact,
+          urgency,
+          status,
+          created_at,
+          updated_at,
+          impact * 2 + urgency AS priority
+        """,
+        data["title"],
+        data["description"],
+        data["requester"],
+        data["impact"],
+        data["urgency"],
+        data["status"],
+        demand_id,
+    )
+    return dict(row) if row else None
+
+
+async def update_demand_status(connection: Connection, demand_id: UUID, status: str) -> dict | None:
+    row = await connection.fetchrow(
+        """
+        UPDATE demands
+        SET
+          status = $1,
+          updated_at = now()
+        WHERE id = $2
+        RETURNING
+          id,
+          title,
+          description,
+          requester,
+          impact,
+          urgency,
+          status,
+          created_at,
+          updated_at,
+          impact * 2 + urgency AS priority
+        """,
+        status,
+        demand_id,
+    )
+    return dict(row) if row else None
+
+
+async def delete_demand(connection: Connection, demand_id: UUID) -> None:
+    await connection.execute("DELETE FROM demands WHERE id = $1", demand_id)
+
+
+async def get_summary(connection: Connection) -> dict[str, int]:
+    row = await connection.fetchrow(
+        """
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE status = 'Pendente')::int AS pending,
+          COUNT(*) FILTER (WHERE status = 'Em andamento')::int AS in_progress,
+          COUNT(*) FILTER (WHERE status = 'Concluída')::int AS completed,
+          COUNT(*) FILTER (WHERE status = 'Cancelada')::int AS cancelled
+        FROM demands
+        """,
+    )
+    return dict(row)

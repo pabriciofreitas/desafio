@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from asyncpg import Connection
 
 from ..repositories.demand_repository import (
     create_demand as repo_create_demand,
@@ -23,22 +23,22 @@ def calculate_priority(impact: int, urgency: int) -> int:
 
 
 async def get_demands(
-    session: AsyncSession,
+    connection: Connection,
     status: str | None = None,
     requester: str | None = None,
     impact: int | None = None,
 ):
-    return await repo_list_demands(session, status=status, requester=requester, impact=impact)
+    return await repo_list_demands(connection, status=status, requester=requester, impact=impact)
 
 
-async def get_demand(session: AsyncSession, demand_id: UUID):
-    demand = await repo_get_demand(session, demand_id)
+async def get_demand(connection: Connection, demand_id: UUID):
+    demand = await repo_get_demand(connection, demand_id)
     if not demand:
         raise NotFoundError("Demanda não encontrada")
     return demand
 
 
-async def create_demand(session: AsyncSession, demand_create: DemandCreate):
+async def create_demand(connection: Connection, demand_create: DemandCreate):
     demand_data = {
         "title": demand_create.title,
         "description": demand_create.description,
@@ -47,31 +47,31 @@ async def create_demand(session: AsyncSession, demand_create: DemandCreate):
         "urgency": demand_create.urgency,
         "status": "Pendente",
     }
-    return await repo_create_demand(session, demand_data)
+    return await repo_create_demand(connection, demand_data)
 
 
-async def update_demand(session: AsyncSession, demand_id: UUID, demand_update: DemandUpdate):
-    demand = await repo_get_demand(session, demand_id)
+async def update_demand(connection: Connection, demand_id: UUID, demand_update: DemandUpdate):
+    demand = await repo_get_demand(connection, demand_id)
     if not demand:
         raise NotFoundError("Demanda não encontrada")
 
-    return await repo_update_demand(session, demand, demand_update.model_dump())
+    return await repo_update_demand(connection, demand_id, demand_update.model_dump())
 
 
-async def change_status(session: AsyncSession, demand_id: UUID, status_data: DemandStatusUpdate):
-    demand = await repo_get_demand(session, demand_id)
+async def change_status(connection: Connection, demand_id: UUID, status_data: DemandStatusUpdate):
+    demand = await repo_get_demand(connection, demand_id)
     if not demand:
         raise NotFoundError("Demanda não encontrada")
 
-    return await repo_update_demand_status(session, demand, status_data.status)
+    return await repo_update_demand_status(connection, demand_id, status_data.status)
 
 
-async def delete_demand(session: AsyncSession, demand_id: UUID) -> None:
-    demand = await repo_get_demand(session, demand_id)
+async def delete_demand(connection: Connection, demand_id: UUID) -> None:
+    demand = await repo_get_demand(connection, demand_id)
     if not demand:
         raise NotFoundError("Demanda não encontrada")
-    await repo_delete_demand(session, demand)
+    await repo_delete_demand(connection, demand_id)
 
 
-async def get_summary(session: AsyncSession) -> dict[str, int]:
-    return await repo_get_summary(session)
+async def get_summary(connection: Connection) -> dict[str, int]:
+    return await repo_get_summary(connection)

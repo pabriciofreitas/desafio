@@ -1,19 +1,54 @@
 from typing import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase
+import asyncpg
 
 from .config import settings
 
 
-class Base(DeclarativeBase):
-    pass
+pool: asyncpg.Pool | None = None
 
 
-engine: AsyncEngine = create_async_engine(settings.DATABASE_URL, future=True, echo=settings.DEBUG)
-async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+async def init_db_pool() -> None:
+    global pool
+    if pool is not None:
+        return
+    pool = await asyncpg.create_pool(
+        host=settings.DB_HOST,
+        port=settings.DB_PORT,
+        user=settings.DB_USER,
+        password=settings.DB_PASSWORD,
+        database=settings.DB_NAME,
+        min_size=1,
+        max_size=10,
+    )
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS demands (
+                id UUID PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                description TEXT NOT NULL,
+                requester VARCHAR(150) NOT NULL,
+                impact INTEGER NOT NULL CHECK (impact BETWEEN 1 AND 5),
+                urgency INTEGER NOT NULL CHECK (urgency BETWEEN 1 AND 5),
+                status VARCHAR(20) NOT NULL DEFAULT 'Pendente',
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+            );
+            """
+        )
 
 
-async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-    async with async_session() as session:
-        yield session
+async def close_db_pool() -> None:
+    global pool
+    if pool is not None:
+        await pool.close()
+        pool = None
+
+
+async def get_db() -> AsyncGenerator[asyncpg.Connection, None]:
+    if pool is None:
+        await init_db_pool()
+    assert pool is not None
+    async with pool.acquire() as connection:
+        yield connection
