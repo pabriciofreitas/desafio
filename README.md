@@ -101,7 +101,7 @@ Acesse a aplicação em `http://localhost:3000`.
 
 ## Decisões técnicas
 
-- Usei PostgreSQL local para persistência, em vez de um banco remoto, para evitar dependências de rede e problemas de DNS/IPv6.
+- Usei PostgreSQL local para persistência, em vez de um banco remoto, por que só consegui fazer projeto faltando pouco tempo .
 - A API usa `asyncpg` e SQL puro.
 - A prioridade é calculada no backend e retornada como número para a UI.
 - O front-end consome a API via `frontend/service/api.ts` e mantém estado de carregamento e erro.
