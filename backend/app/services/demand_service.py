@@ -45,7 +45,7 @@ async def create_demand(connection: Connection, demand_create: DemandCreate):
         "requester": demand_create.requester,
         "impact": demand_create.impact,
         "urgency": demand_create.urgency,
-        "status": "Pendente",
+        "status": demand_create.status,
     }
     return await repo_create_demand(connection, demand_data)
 

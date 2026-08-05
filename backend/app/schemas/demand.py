@@ -16,7 +16,7 @@ class DemandBase(BaseModel):
 
 
 class DemandCreate(DemandBase):
-    pass
+    status: DemandStatus
 
 
 class DemandUpdate(DemandBase):

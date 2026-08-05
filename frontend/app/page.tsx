@@ -231,6 +231,7 @@ export default function Home() {
             <NewDemandForm
               requesters={requesters}
               initialData={editingDemand ? {
+                status: editingDemand.status,
                 title: editingDemand.title,
                 description: editingDemand.description,
                 requester: editingDemand.requester,

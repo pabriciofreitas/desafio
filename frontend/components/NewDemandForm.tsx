@@ -6,6 +6,7 @@ interface DemandFormData {
   requester: string;
   impact: number;
   urgency: number;
+  status: string ;
 }
 
 interface NewDemandFormProps {
@@ -22,6 +23,7 @@ export function NewDemandForm({ requesters, initialData, onSubmit, onCancel, sub
   const [requester, setRequester] = useState(requesters[0] ?? "");
   const [impact, setImpact] = useState(3);
   const [urgency, setUrgency] = useState(3);
+  const [status, setStatus] = useState("Pendente");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -31,6 +33,7 @@ export function NewDemandForm({ requesters, initialData, onSubmit, onCancel, sub
       setRequester(initialData.requester);
       setImpact(initialData.impact);
       setUrgency(initialData.urgency);
+      setStatus(initialData.status);
       setError("");
       return;
     }
@@ -40,6 +43,7 @@ export function NewDemandForm({ requesters, initialData, onSubmit, onCancel, sub
     setRequester(requesters[0] ?? "");
     setImpact(3);
     setUrgency(3);
+    setStatus("Pendente");
     setError("");
   }, [initialData, requesters]);
 
@@ -54,7 +58,7 @@ export function NewDemandForm({ requesters, initialData, onSubmit, onCancel, sub
       return;
     }
     setError("");
-    onSubmit({ title: title.trim(), description: description.trim(), requester, impact, urgency });
+    onSubmit({ title: title.trim(), description: description.trim(), requester, impact, urgency, status });
   };
 
   return (
@@ -140,6 +144,19 @@ export function NewDemandForm({ requesters, initialData, onSubmit, onCancel, sub
             onChange={(event) => setUrgency(Number(event.target.value))}
             className="mt-2 rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
           />
+        </label>
+        <label className="flex flex-col text-sm text-slate-700 sm:col-span-2">
+          Status
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="mt-2 rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
+          >
+            <option value="Pendente">Pendente</option>
+            <option value="Em andamento">Em andamento</option>
+            <option value="Concluída">Concluída</option>
+            <option value="Cancelada">Cancelada</option>
+          </select>
         </label>
       </div>
       {error ? <p className="mt-4 rounded-2xl bg-rose-100 px-4 py-3 text-sm text-rose-700">{error}</p> : null}

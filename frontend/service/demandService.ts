@@ -75,6 +75,7 @@ export async function createDemand(data: {
   requester: string;
   impact: number;
   urgency: number;
+  status?: DemandStatus;
 }): Promise<Demand> {
   const row = await api.post<any>("/demands/", {
     title: data.title,
@@ -82,6 +83,7 @@ export async function createDemand(data: {
     requester: data.requester,
     impact: data.impact,
     urgency: data.urgency,
+    status: data.status,
   });
   return mapBackendToDemand(row);
 }
