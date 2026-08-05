@@ -116,7 +116,7 @@ export async function updateDemandStatus(id: string, status: DemandStatus): Prom
   return { id: String(row.id), status: row.status };
 }
 
-export async function deleteDemand(id: string): Promise<{ id: string }> {
+export async function deleteDemand(id: string): Promise<void> {
   await api.del(`/demands/${id}`);
-  return { id };
+  
 }

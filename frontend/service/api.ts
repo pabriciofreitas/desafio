@@ -19,9 +19,15 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     const text = await res.text();
     throw new Error(`HTTP ${res.status} ${res.statusText}: ${text}`);
   }
+  // No content (204) — return undefined
+  if (res.status === 204) return undefined as T;
+
   const contentType = res.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
-    return (await res.json()) as T;
+    // some servers send application/json with empty body on 204 — guard against empty text
+    const txt = await res.text();
+    if (!txt) return undefined as T;
+    return JSON.parse(txt) as T;
   }
   // @ts-ignore
   return (await res.text()) as T;
