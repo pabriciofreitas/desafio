@@ -77,6 +77,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ```bash
 cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
