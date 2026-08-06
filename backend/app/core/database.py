@@ -14,7 +14,6 @@ async def init_db_pool() -> None:
         return
 
     create_kwargs = {"min_size": 1, "max_size": 10}
-    print(settings.DATABASE_URL)
     create_kwargs["dsn"] = settings.DATABASE_URL
     create_kwargs["ssl"] = "require"
     pool = await asyncpg.create_pool(**create_kwargs)
