@@ -1,5 +1,6 @@
 import os
 from functools import lru_cache
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -16,14 +17,7 @@ for path in dotenv_paths:
 
 class Settings:
     def __init__(self) -> None:
-        self.DB_HOST = os.getenv("DB_HOST")
-        self.DB_PORT = int(os.getenv("DB_PORT"))
-        self.DB_NAME = os.getenv("DB_NAME")
-        self.DB_USER = os.getenv("DB_USER")
-        self.DB_PASSWORD = os.getenv("DB_PASSWORD")
-
-        self.APP_HOST = os.getenv("APP_HOST")
-        self.APP_PORT = int(os.getenv("APP_PORT"))
+        self.DATABASE_URL = os.getenv("DATABASE_URL")   
         self.DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
 
 

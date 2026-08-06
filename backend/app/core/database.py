@@ -12,15 +12,12 @@ async def init_db_pool() -> None:
     global pool
     if pool is not None:
         return
-    pool = await asyncpg.create_pool(
-        host=settings.DB_HOST,
-        port=settings.DB_PORT,
-        user=settings.DB_USER,
-        password=settings.DB_PASSWORD,
-        database=settings.DB_NAME,
-        min_size=1,
-        max_size=10,
-    )
+
+    create_kwargs = {"min_size": 1, "max_size": 10}
+    print(settings.DATABASE_URL)
+    create_kwargs["dsn"] = settings.DATABASE_URL
+    create_kwargs["ssl"] = "require"
+    pool = await asyncpg.create_pool(**create_kwargs)
     async with pool.acquire() as conn:
         await conn.execute(
            """
