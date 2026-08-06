@@ -2,6 +2,8 @@
 
 Aplicação de gerenciamento de demandas de produto, com front-end em Next.js e back-end em FastAPI.
 
+# Produção: https://desafio-beta-teal.vercel.app/
+
 ## Descrição
 
 Painel de demandas que permite cadastrar, listar, filtrar, atualizar status e excluir demandas. A prioridade é calculada no servidor usando a fórmula:
